@@ -1,0 +1,148 @@
+spring:
+  application:
+    name: trustdeck-sql-connector
+  output:
+    # Colored log levels like the TrustDeck backend; set LOG_COLORS=never for collectors without ANSI support
+    ansi:
+      enabled: ${LOG_COLORS:always}
+  main:
+    # The connector exposes only the Actuator health URLs; row processing runs on its own thread
+    web-application-type: servlet
+  jackson:
+    # Omit absent optional fields from TrustDeck requests and recovery entries
+    default-property-inclusion: non_null
+  mail:
+    # Optional standard Spring Boot SMTP transport settings. SMTP_TO controls delivery
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:25}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.ssl.enable: ${SMTP_SSL_ENABLE:false}
+      mail.smtp.connectiontimeout: ${SMTP_CONNECTION_TIMEOUT:5000}
+      mail.smtp.timeout: ${SMTP_READ_TIMEOUT:10000}
+      mail.smtp.writetimeout: ${SMTP_WRITE_TIMEOUT:10000}
+
+server:
+  # Port for /actuator/health/{readiness,liveness}
+  port: ${HEALTH_PORT:8080}
+  # Let the current row finish before the application stops
+  shutdown: graceful
+
+management:
+  # Expose only health; details are intentionally hidden
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  health:
+    # The source database is probed by the connector itself while paused
+    db:
+      enabled: false
+    group:
+      readiness:
+        include: readinessState,connector
+      liveness:
+        include: livenessState
+
+connector:
+  # One fixed operation is selected per connector instance
+  operation: ${TRUSTDECK_OPERATION}
+  # ONE_SHOT reads all rows once and exits; POLLING keeps reading new rows
+  mode: ${CONNECTOR_MODE:ONE_SHOT}
+  batch-size: ${TRUSTDECK_BATCH_SIZE:100}
+  batch-bytes: ${TRUSTDECK_BATCH_BYTES:262144}
+  connect-timeout: ${TRUSTDECK_CONNECT_TIMEOUT:5s}
+  read-timeout: ${TRUSTDECK_READ_TIMEOUT:30s}
+  preflight:
+    enabled: ${CONNECTOR_PREFLIGHT_ENABLED:true}
+  database:
+    # Either a complete JDBC URL, or dialect, host, (port,) and name. A URL wins
+    url: ${DB_URL:}
+    # SQLSERVER, POSTGRESQL, OTHER (FETCH FIRST), or OTHER_LIMIT (LIMIT); detected from DB_URL when empty
+    dialect: ${DB_DIALECT:}
+    host: ${DB_HOST:}
+    port: ${DB_PORT:}
+    name: ${DB_NAME:}
+    # SQL login; grant it SELECT on the source table only
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: ${DB_DRIVER_CLASS_NAME:}
+    pool-size: ${DB_POOL_SIZE:2}
+    connection-timeout: ${DB_CONNECTION_TIMEOUT:30s}
+    query-timeout: ${DB_QUERY_TIMEOUT:60s}
+    # Driver-specific settings such as truststores belong in the instance YAML:
+    # connection-properties:
+    #   trustStore: /app/truststores/sqlserver.jks
+  source:
+    schema: ${SOURCE_SCHEMA:}
+    table: ${SOURCE_TABLE}
+    key-column: ${SOURCE_KEY_COLUMN}
+    # Values must only increase for new rows; defaults to the key column
+    progress-column: ${SOURCE_PROGRESS_COLUMN:}
+    # Optional filter condition; no ';', comments, or unbalanced parentheses
+    where: ${SOURCE_WHERE:}
+    page-size: ${SOURCE_PAGE_SIZE:500}
+    poll-interval: ${CONNECTOR_POLL_INTERVAL:60s}
+    progress-file: ${CONNECTOR_PROGRESS_FILE:state/progress.json}
+  trustdeck:
+    service-url: ${TRUSTDECK_SERVICE_URL}
+    token-endpoint: ${KEYCLOAK_TOKEN_ENDPOINT}
+    client-id: ${KEYCLOAK_CLIENT_ID}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET}
+    project: ${TRUSTDECK_PROJECT:}
+    entity-type: ${TRUSTDECK_ENTITY_TYPE:}
+  mapping:
+    # Provide only the mappings required by the selected operation. Mappings used exclusively by other operations may be omitted. Optional mappings may also be omitted.
+    # Mapping values are column names of the source table, matched case-insensitively.
+    # A nonblank constant domain takes precedence over the domain column.
+    common:
+      domain-constant: ${TRUSTDECK_DOMAIN:}
+      domain-column: ${SOURCE_DOMAIN_COLUMN:}
+      identifier-column: ${SOURCE_IDENTIFIER_COLUMN:}
+      id-type-column: ${SOURCE_IDTYPE_COLUMN:}
+      psn-column: ${SOURCE_PSN_COLUMN:}
+      validity-time-column: ${SOURCE_VALIDITY_TIME_COLUMN:}
+      valid-from-column: ${SOURCE_VALID_FROM_COLUMN:}
+      valid-to-column: ${SOURCE_VALID_TO_COLUMN:}
+      username-column: ${SOURCE_USERNAME_COLUMN:}
+      entity-type-column: ${SOURCE_ENTITY_TYPE_COLUMN:}
+      entity-id-column: ${SOURCE_ENTITY_ID_COLUMN:}
+      source-timezone: ${MAPPING_SOURCE_TIMEZONE:UTC}
+      datetime-format: ${MAPPING_DATETIME_FORMAT:}
+    update-pseudonym:
+      old-identifier-column: ${SOURCE_OLD_IDENTIFIER_COLUMN:}
+      old-id-type-column: ${SOURCE_OLD_IDTYPE_COLUMN:}
+      old-psn-column: ${SOURCE_OLD_PSN_COLUMN:}
+      new-identifier-column: ${SOURCE_NEW_IDENTIFIER_COLUMN:}
+      new-id-type-column: ${SOURCE_NEW_IDTYPE_COLUMN:}
+      new-psn-column: ${SOURCE_NEW_PSN_COLUMN:}
+      old-domain-column: ${SOURCE_OLD_DOMAIN_COLUMN:}
+      new-domain-column: ${SOURCE_NEW_DOMAIN_COLUMN:}
+  recovery:
+    dlt-file: ${CONNECTOR_DLT_FILE:state/dlt.jsonl}
+    review-file: ${CONNECTOR_REVIEW_FILE:state/review.jsonl}
+    max-attempts: ${RECOVERY_MAX_ATTEMPTS:3}
+    initial-backoff: ${RECOVERY_INITIAL_BACKOFF:1s}
+    probe-interval: ${RECOVERY_PROBE_INTERVAL:15s}
+  statistics:
+    # Disabled by default because each sample makes authenticated backend requests
+    enabled: ${CONNECTOR_STATISTICS_ENABLED:false}
+    interval: ${CONNECTOR_STATISTICS_INTERVAL:10s}
+    output-directory: ${CONNECTOR_STATISTICS_OUTPUT_DIRECTORY:statistics}
+    max-file-age: ${CONNECTOR_STATISTICS_MAX_FILE_AGE:1d}
+    max-file-size: ${CONNECTOR_STATISTICS_MAX_FILE_SIZE:256MB}
+
+# Console format matches the TrustDeck backend (see logback-spring.xml). Like TrustDeck, third-party
+# libraries log only warnings; override with e.g. LOGGING_LEVEL_ROOT=INFO when debugging.
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:WARN}
+    org.trustdeck: ${LOGGING_LEVEL_ORG_TRUSTDECK:INFO}
