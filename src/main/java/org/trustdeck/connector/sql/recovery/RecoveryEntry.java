@@ -18,13 +18,16 @@ package org.trustdeck.connector.sql.recovery;
 
 import java.time.Instant;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 /**
  * One line of the dead-letter or review file.
  *
  * An entry identifies the source row by its table and key, together with the
  * connector operation, the resolved TrustDeck target, the sanitized failure
  * outcome, and optional completed-stage metadata. Column values other than the
- * key are not copied; the row itself stays in the source database.
+ * key are not copied; the row itself stays in the source database. Absent
+ * values are omitted from the JSON line.
  *
  * @param schemaVersion recovery entry schema version
  * @param status terminal recovery status
@@ -47,6 +50,7 @@ import java.time.Instant;
  *
  * @author Armin Müller
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record RecoveryEntry(String schemaVersion, String status, Instant recordedAt, String sourceTable, String keyColumn,
 		String sourceKey, String operation, String resolvedTarget, String failureCategory, Integer httpStatus, int attempts,
 		String completedStage, String completedUuid, String username, String detail, String manualGuidance,
