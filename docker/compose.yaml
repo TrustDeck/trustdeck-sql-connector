@@ -1,0 +1,35 @@
+services:
+  trustdeck-sql-connector:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      # Proxy for Maven and apt during the build, taken from the calling shell; empty without a proxy
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+        http_proxy: ${http_proxy:-}
+        https_proxy: ${https_proxy:-}
+        no_proxy: ${no_proxy:-}
+    image: trustdeck-sql-connector:1.0.0
+    # A finished one-shot import exits with status 0 and stays stopped; a failed start or fatal error
+    # (status 1) is retried a few times. Outages never stop the container; processing pauses instead
+    restart: ${CONNECTOR_RESTART_POLICY:-on-failure:5}
+    stop_grace_period: 45s
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      TZ: UTC
+      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/
+    volumes:
+      - ../config/instance/application.yaml:/app/config/application.yaml:ro
+      - ../config/instance/truststores:/app/truststores:ro
+      # Additional JDBC drivers; see drivers/README.md
+      - ../drivers:/app/drivers:ro
+      # Progress, dead-letter, and review files survive container recreation; writable by UID 10001 (connector.sh prepares it)
+      - ${STATE_HOST_DIR:-../state}:/app/state
+      # Statistics survive container recreation; the directory must be writable by UID 10001 (connector.sh prepares it)
+      - ${STATISTICS_HOST_DIR:-../statistics}:/app/statistics
+    ports:
+      - "${HEALTH_HOST_PORT:-18081}:8080"

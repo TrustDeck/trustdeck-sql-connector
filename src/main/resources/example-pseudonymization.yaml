@@ -1,0 +1,46 @@
+# Synthetic/example mapping only. These names are not production schema requirements.
+#
+# Imports existing pseudonyms from a SQL Server table such as:
+#
+#   CREATE TABLE dbo.PseudonymExport (
+#     ExportId     BIGINT IDENTITY PRIMARY KEY,
+#     SourceDomain NVARCHAR(100) NOT NULL,
+#     CaseNumber   NVARCHAR(20)  NOT NULL,  -- leading zeros are kept
+#     IdType       NVARCHAR(50)  NOT NULL,
+#     Pseudonym    NVARCHAR(100) NOT NULL,
+#     CreatedAt    DATETIME2(3)  NOT NULL   -- local time in Europe/Berlin
+#   );
+connector:
+  operation: CREATE_PSEUDONYM
+  mode: ONE_SHOT
+  database:
+    dialect: SQLSERVER
+    host: sqlserver.example.invalid
+    name: clinic
+    username: replace-me
+    password: replace-me
+  source:
+    schema: dbo
+    table: PseudonymExport
+    key-column: ExportId
+    where: CreatedAt >= '2025-01-01'
+  statistics:
+    enabled: false
+    interval: 10s
+    output-directory: statistics
+    max-file-age: 1d
+    max-file-size: 256MB
+  trustdeck:
+    service-url: https://trustdeck.example.invalid
+    token-endpoint: https://keycloak.example.invalid/realms/trustdeck/protocol/openid-connect/token
+    client-id: replace-me
+    client-secret: replace-me
+    project: synthetic-project
+  mapping:
+    common:
+      domain-column: SourceDomain
+      identifier-column: CaseNumber
+      id-type-column: IdType
+      psn-column: Pseudonym
+      valid-from-column: CreatedAt
+      source-timezone: Europe/Berlin

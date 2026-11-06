@@ -1,0 +1,22 @@
+# Optional per-instance overrides. Keep secrets in .env, not in this file.
+# The classpath application.yaml provides the generic defaults.
+#
+# Examples (uncomment and adapt):
+#
+# connector:
+#   database:
+#     # Driver-specific settings, for example a truststore for SQL Server TLS
+#     connection-properties:
+#       trustStore: /app/truststores/sqlserver.jks
+#       trustStorePassword: ${DB_TRUSTSTORE_PASSWORD}
+#   mapping:
+#     common:
+#       # Entity data for CREATE_ENTITY, UPDATE_ENTITY, and CREATE_ENTITY_AND_PSEUDONYM
+#       entity-fields:
+#         - column: case_number
+#           target-path: /caseNumber
+#           required: true
+#         - column: birth_date
+#           target-path: /patient/birthDate
+#         - constant: clinic-a
+#           target-path: /source
