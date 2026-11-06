@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.IntConsumer;
 
 import jakarta.annotation.PreDestroy;
@@ -34,6 +35,7 @@ import org.trustdeck.connector.sql.config.ConnectorProperties;
 import org.trustdeck.connector.sql.database.SourceReader;
 import org.trustdeck.connector.sql.database.SourceRow;
 import org.trustdeck.connector.sql.database.SourceTable;
+import org.trustdeck.connector.sql.database.ValueCodec;
 import org.trustdeck.connector.sql.health.OutageCoordinator;
 import org.trustdeck.connector.sql.notification.NotificationService;
 import org.trustdeck.connector.sql.state.ProgressStore;
@@ -58,6 +60,9 @@ public class ConnectorRunner {
 
 	/** Maximum time a graceful shutdown waits for the current row to finish. */
 	private static final Duration SHUTDOWN_WAIT = Duration.ofSeconds(30);
+
+	/** Minimum time between two progress log lines. */
+	private static final Duration PROGRESS_LOG_INTERVAL = Duration.ofMinutes(1);
 
 	/** Reads pages of source rows. */
 	private final SourceReader reader;
@@ -209,6 +214,9 @@ public class ConnectorRunner {
 	 */
 	private void loop() throws InterruptedException {
 		Instant started = Instant.now();
+		Instant lastReport = started;
+		long rowsRead = 0;
+		long rowsAtLastReport = 0;
 		boolean idleAnnounced = false;
 		log.info("Processing {} in {} mode with operation {}.", table.qualifiedName(), properties.getMode(), properties.getOperation());
 
@@ -248,6 +256,19 @@ public class ConnectorRunner {
 				pause(pauseRequired);
 			} finally {
 				statistics.recordBatch(page.size(), System.nanoTime() - pageStarted);
+			}
+
+			// Report the throughput at most once per interval; rows read again after a pause are counted again
+			rowsRead += page.size();
+			Instant now = Instant.now();
+			Duration elapsed = Duration.between(lastReport, now);
+
+			if (elapsed.compareTo(PROGRESS_LOG_INTERVAL) >= 0) {
+				double rate = (rowsRead - rowsAtLastReport) / Math.max(1.0, elapsed.toMillis() / 1000.0);
+				log.info("Progress: {} row(s) read, {} row(s)/s, last completed key {}.{}", rowsRead, String.format(Locale.ROOT, "%.1f", rate),
+						progress.position() == null ? "-" : ValueCodec.text(progress.position().key()), summary());
+				lastReport = now;
+				rowsAtLastReport = rowsRead;
 			}
 		}
 	}
