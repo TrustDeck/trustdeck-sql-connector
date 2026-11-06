@@ -32,51 +32,55 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import java.time.Duration;
 
-/** Verifies advisory SMTP notification behavior. */
+/**
+ * Verifies advisory SMTP notification behavior.
+ *
+ * @author Armin Müller
+ */
 class NotificationServiceTest {
 
-    /** Ensures notifications are suppressed when no recipients are configured. */
-    @Test
-    void suppressesNotificationWithoutRecipients() {
-        @SuppressWarnings("unchecked")
+	/** Ensures notifications are suppressed when no recipients are configured. */
+	@Test
+	void suppressesNotificationWithoutRecipients() {
+		@SuppressWarnings("unchecked")
 		ObjectProvider<JavaMailSender> provider = mock(ObjectProvider.class);
-        JavaMailSender sender = mock(JavaMailSender.class);
-        when(provider.getIfAvailable()).thenReturn(sender);
+		JavaMailSender sender = mock(JavaMailSender.class);
+		when(provider.getIfAvailable()).thenReturn(sender);
 
-        new NotificationService(provider, "", "from@example.test", "[Test]").send("Subject", "Body");
+		new NotificationService(provider, "", "from@example.test", "[Test]").send("Subject", "Body");
 
-        verify(sender, never()).send(any(SimpleMailMessage.class));
-    }
+		verify(sender, never()).send(any(SimpleMailMessage.class));
+	}
 
-    /** Ensures a mail transport failure does not escape into row processing. */
-    @Test
-    void swallowsNotificationTransportFailure() {
-        @SuppressWarnings("unchecked")
+	/** Ensures a mail transport failure does not escape into row processing. */
+	@Test
+	void swallowsNotificationTransportFailure() {
+		@SuppressWarnings("unchecked")
 		ObjectProvider<JavaMailSender> provider = mock(ObjectProvider.class);
-        JavaMailSender sender = mock(JavaMailSender.class);
-        when(provider.getIfAvailable()).thenReturn(sender);
-        doThrow(new IllegalStateException("SMTP unavailable")).when(sender)
-                .send(any(SimpleMailMessage.class));
+		JavaMailSender sender = mock(JavaMailSender.class);
+		when(provider.getIfAvailable()).thenReturn(sender);
+		doThrow(new IllegalStateException("SMTP unavailable")).when(sender)
+				.send(any(SimpleMailMessage.class));
 
-        assertDoesNotThrow(() -> new NotificationService(provider, "to@example.test", "from@example.test", "[Test]")
-                .send("Subject", "Body"));
-        verify(sender).send(any(SimpleMailMessage.class));
-    }
+		assertDoesNotThrow(() -> new NotificationService(provider, "to@example.test", "from@example.test", "[Test]")
+				.send("Subject", "Body"));
+		verify(sender).send(any(SimpleMailMessage.class));
+	}
 
-    /** Ensures repeated outage notices are cooled down while recovery is always sent. */
-    @Test
-    void coolsDownOutageButNotRecoveryNotification() {
-        @SuppressWarnings("unchecked")
+	/** Ensures repeated outage notices are cooled down while recovery is always sent. */
+	@Test
+	void coolsDownOutageButNotRecoveryNotification() {
+		@SuppressWarnings("unchecked")
 		ObjectProvider<JavaMailSender> provider = mock(ObjectProvider.class);
-        JavaMailSender sender = mock(JavaMailSender.class);
-        when(provider.getIfAvailable()).thenReturn(sender);
-        NotificationService notifications = new NotificationService(provider, "to@example.test", "from@example.test",
-                "[Test]", Duration.ofHours(1));
+		JavaMailSender sender = mock(JavaMailSender.class);
+		when(provider.getIfAvailable()).thenReturn(sender);
+		NotificationService notifications = new NotificationService(provider, "to@example.test", "from@example.test",
+				"[Test]", Duration.ofHours(1));
 
-        notifications.send("TrustDeck outage", "first");
-        notifications.send("TrustDeck outage", "duplicate");
-        notifications.send("TrustDeck recovered", "recovered");
+		notifications.send("TrustDeck outage", "first");
+		notifications.send("TrustDeck outage", "duplicate");
+		notifications.send("TrustDeck recovered", "recovered");
 
-        verify(sender, times(2)).send(any(SimpleMailMessage.class));
-    }
+		verify(sender, times(2)).send(any(SimpleMailMessage.class));
+	}
 }
