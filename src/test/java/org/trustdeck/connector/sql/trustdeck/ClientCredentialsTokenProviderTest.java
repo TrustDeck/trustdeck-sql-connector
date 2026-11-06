@@ -31,59 +31,63 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.trustdeck.connector.sql.config.ConnectorProperties;
 
-/** Verifies OAuth refresh before the configured token expiry window. */
+/**
+ * Verifies OAuth refresh before the configured token expiry window.
+ *
+ * @author Armin Müller
+ */
 class ClientCredentialsTokenProviderTest {
 
-    /** Controlled token endpoint. */
-    private HttpServer server;
-    /** Number of token requests received. */
-    private AtomicInteger requests;
+	/** Controlled token endpoint. */
+	private HttpServer server;
+	/** Number of token requests received. */
+	private AtomicInteger requests;
 
-    /**
-     * Starts the controlled token endpoint.
-     *
-     * @throws IOException if the server cannot start
-     */
-    @BeforeEach
-    void start() throws IOException {
-        requests = new AtomicInteger();
-        server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/token", this::token);
-        server.start();
-    }
+	/**
+	 * Starts the controlled token endpoint.
+	 *
+	 * @throws IOException if the server cannot start
+	 */
+	@BeforeEach
+	void start() throws IOException {
+		requests = new AtomicInteger();
+		server = HttpServer.create(new InetSocketAddress(0), 0);
+		server.createContext("/token", this::token);
+		server.start();
+	}
 
-    /** Stops the controlled token endpoint. */
-    @AfterEach
-    void stop() {
-        server.stop(0);
-    }
+	/** Stops the controlled token endpoint. */
+	@AfterEach
+	void stop() {
+		server.stop(0);
+	}
 
-    /** An almost-expired token is refreshed rather than reused. */
-    @Test
-    void refreshesExpiringToken() {
-        ConnectorProperties properties = new ConnectorProperties();
-        properties.getTrustdeck().setTokenEndpoint("http://localhost:" + server.getAddress().getPort() + "/token");
-        properties.getTrustdeck().setClientId("client");
-        properties.getTrustdeck().setClientSecret("secret");
-        ClientCredentialsTokenProvider provider = new ClientCredentialsTokenProvider(properties);
+	/** An almost-expired token is refreshed rather than reused. */
+	@Test
+	void refreshesExpiringToken() {
+		ConnectorProperties properties = new ConnectorProperties();
+		properties.getTrustdeck().setTokenEndpoint("http://localhost:" + server.getAddress().getPort() + "/token");
+		properties.getTrustdeck().setClientId("client");
+		properties.getTrustdeck().setClientSecret("secret");
+		ClientCredentialsTokenProvider provider = new ClientCredentialsTokenProvider(properties);
 
-        assertEquals("token-1", provider.getAccessToken());
-        assertEquals("token-2", provider.getAccessToken());
-        assertEquals(2, requests.get());
-    }
+		assertEquals("token-1", provider.getAccessToken());
+		assertEquals("token-2", provider.getAccessToken());
+		assertEquals(2, requests.get());
+	}
 
-    /**
-     * Answers a token request.
-     *
-     * @param exchange HTTP exchange
-     * @throws IOException if the response cannot be written
-     */
-    private void token(HttpExchange exchange) throws IOException {
-        int number = requests.incrementAndGet();
-        byte[] response = ("{\"access_token\":\"token-" + number + "\",\"expires_in\":1}")
-                .getBytes(StandardCharsets.UTF_8);
-        exchange.sendResponseHeaders(200, response.length);
-        exchange.getResponseBody().write(response);
-        exchange.close();
-    }
+	/**
+	 * Answers a token request.
+	 *
+	 * @param exchange HTTP exchange
+	 * @throws IOException if the response cannot be written
+	 */
+	private void token(HttpExchange exchange) throws IOException {
+		int number = requests.incrementAndGet();
+		byte[] response = ("{\"access_token\":\"token-" + number + "\",\"expires_in\":1}")
+				.getBytes(StandardCharsets.UTF_8);
+		exchange.sendResponseHeaders(200, response.length);
+		exchange.getResponseBody().write(response);
+		exchange.close();
+	}
 }

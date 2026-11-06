@@ -25,46 +25,50 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.ansi.AnsiOutput;
 
-/** Verifies the TrustDeck-style level colors and that coloring can be switched off. */
+/**
+ * Verifies the TrustDeck-style level colors and that coloring can be switched off.
+ *
+ * @author Armin Müller
+ */
 class LevelColorConverterTest {
 
-    /** Converter under test. */
-    private final LevelColorConverter converter = new LevelColorConverter();
+	/** Converter under test. */
+	private final LevelColorConverter converter = new LevelColorConverter();
 
-    /** Restores the default ANSI detection after each test. */
-    @AfterEach
-    void resetAnsi() {
-        AnsiOutput.setEnabled(AnsiOutput.Enabled.DETECT);
-    }
+	/** Restores the default ANSI detection after each test. */
+	@AfterEach
+	void resetAnsi() {
+		AnsiOutput.setEnabled(AnsiOutput.Enabled.DETECT);
+	}
 
-    /** Errors red, warnings yellow, information blue, debug uncolored. */
-    @Test
-    void colorsLevelsLikeTrustDeck() {
-        AnsiOutput.setEnabled(AnsiOutput.Enabled.ALWAYS);
+	/** Errors red, warnings yellow, information blue, debug uncolored. */
+	@Test
+	void colorsLevelsLikeTrustDeck() {
+		AnsiOutput.setEnabled(AnsiOutput.Enabled.ALWAYS);
 
-        assertEquals("\u001B[31mERROR\u001B[0;39m", converter.transform(event(Level.ERROR), "ERROR"));
-        assertEquals("\u001B[33mWARN\u001B[0;39m", converter.transform(event(Level.WARN), "WARN"));
-        assertEquals("\u001B[34mINFO\u001B[0;39m", converter.transform(event(Level.INFO), "INFO"));
-        assertEquals("DEBUG", converter.transform(event(Level.DEBUG), "DEBUG"));
-    }
+		assertEquals("\u001B[31mERROR\u001B[0;39m", converter.transform(event(Level.ERROR), "ERROR"));
+		assertEquals("\u001B[33mWARN\u001B[0;39m", converter.transform(event(Level.WARN), "WARN"));
+		assertEquals("\u001B[34mINFO\u001B[0;39m", converter.transform(event(Level.INFO), "INFO"));
+		assertEquals("DEBUG", converter.transform(event(Level.DEBUG), "DEBUG"));
+	}
 
-    /** With spring.output.ansi.enabled=never the text stays plain. */
-    @Test
-    void leavesTextPlainWhenAnsiIsDisabled() {
-        AnsiOutput.setEnabled(AnsiOutput.Enabled.NEVER);
+	/** With spring.output.ansi.enabled=never the text stays plain. */
+	@Test
+	void leavesTextPlainWhenAnsiIsDisabled() {
+		AnsiOutput.setEnabled(AnsiOutput.Enabled.NEVER);
 
-        assertEquals("ERROR", converter.transform(event(Level.ERROR), "ERROR"));
-    }
+		assertEquals("ERROR", converter.transform(event(Level.ERROR), "ERROR"));
+	}
 
-    /**
-     * Creates a logging event of a level.
-     *
-     * @param level event level
-     * @return logging event
-     */
-    private LoggingEvent event(Level level) {
-        LoggingEvent event = new LoggingEvent();
-        event.setLevel(level);
-        return event;
-    }
+	/**
+	 * Creates a logging event of a level.
+	 *
+	 * @param level event level
+	 * @return logging event
+	 */
+	private LoggingEvent event(Level level) {
+		LoggingEvent event = new LoggingEvent();
+		event.setLevel(level);
+		return event;
+	}
 }

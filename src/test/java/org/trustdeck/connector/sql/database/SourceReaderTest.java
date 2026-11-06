@@ -83,7 +83,11 @@ class SourceReaderTest {
 		}
 	}
 
-	/** Names are matched case-insensitively and quoted as the database stores them. */
+	/**
+	 * Names are matched case-insensitively and quoted as the database stores them.
+	 *
+	 * @throws SQLException if the test setup or execution fails
+	 */
 	@Test
 	void resolvesNamesCaseInsensitively() throws SQLException {
 		SourceTable table = table();
@@ -115,7 +119,11 @@ class SourceReaderTest {
 		assertThrows(IllegalStateException.class, this::table);
 	}
 
-	/** With the key as progress column, pages continue strictly after the last key. */
+	/**
+	 * With the key as progress column, pages continue strictly after the last key.
+	 *
+	 * @throws SQLException if the test setup or execution fails
+	 */
 	@Test
 	void pagesByKey() throws SQLException {
 		List<Object> keys = readAll(reader(table()));
@@ -123,7 +131,11 @@ class SourceReaderTest {
 		assertEquals(List.of(10L, 20L, 30L, 40L, 50L), keys);
 	}
 
-	/** A separate progress column orders by progress, then key, and skips NULL progress values. */
+	/**
+	 * A separate progress column orders by progress, then key, and skips NULL progress values.
+	 *
+	 * @throws SQLException if the test setup or execution fails
+	 */
 	@Test
 	void pagesByProgressThenKey() throws SQLException {
 		properties.getSource().setProgressColumn("created_at");
@@ -132,7 +144,11 @@ class SourceReaderTest {
 		assertEquals(List.of(10L, 20L, 50L, 30L), readAll(reader(table())));
 	}
 
-	/** The filter limits the rows. */
+	/**
+	 * The filter limits the rows.
+	 *
+	 * @throws SQLException if the test setup or execution fails
+	 */
 	@Test
 	void appliesFilter() throws SQLException {
 		properties.getSource().setWhere("site = 'A' AND (case_number <> '0050')");
@@ -140,7 +156,11 @@ class SourceReaderTest {
 		assertEquals(List.of(10L, 30L, 40L), readAll(reader(table())));
 	}
 
-	/** A filter the database cannot execute is reported at startup. */
+	/**
+	 * A filter the database cannot execute is reported at startup.
+	 *
+	 * @throws SQLException if the test setup or execution fails
+	 */
 	@Test
 	void verifiesQueryAtStartup() throws SQLException {
 		properties.getSource().setWhere("no_such_column = 1");
@@ -148,7 +168,11 @@ class SourceReaderTest {
 		assertThrows(SQLException.class, reader(table())::verify);
 	}
 
-	/** Time stamps are read as java.time values with and without offset. */
+	/**
+	 * Time stamps are read as java.time values with and without offset.
+	 *
+	 * @throws SQLException if the test setup or execution fails
+	 */
 	@Test
 	void readsTemporalTypes() throws SQLException {
 		properties.getMapping().getCommon().setValidFromColumn("created_at");
