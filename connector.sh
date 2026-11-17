@@ -174,8 +174,9 @@ read_state_file() {
 # Waits for the Docker health check, which calls the readiness endpoint.
 # A one-shot import of a small table may already have finished; exit status 0 counts as success.
 wait_for_ready() {
-  local retries="${1:-36}"
-  local delay="${2:-5}"
+  # Up to 36 checks, 5 seconds apart (3 minutes)
+  local retries=36
+  local delay=5
   local container
   container="$(compose ps -aq "$SERVICE")"
 
