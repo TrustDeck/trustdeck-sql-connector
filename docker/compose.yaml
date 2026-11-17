@@ -1,5 +1,7 @@
 services:
   trustdeck-sql-connector:
+    # Named after the Compose project, so instances started with different CONNECTOR_PROJECT values do not collide
+    container_name: ${COMPOSE_PROJECT_NAME:-trustdeck-sql-connector}
     build:
       context: ..
       dockerfile: docker/Dockerfile
