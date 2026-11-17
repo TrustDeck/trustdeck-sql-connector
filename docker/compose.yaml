@@ -19,7 +19,8 @@ services:
     restart: ${CONNECTOR_RESTART_POLICY:-on-failure:5}
     stop_grace_period: 45s
     env_file:
-      - path: ../.env
+      # connector.sh sets CONNECTOR_ENV_FILE to the instance's environment file
+      - path: ${CONNECTOR_ENV_FILE:-../.env}
         required: false
     environment:
       TZ: UTC

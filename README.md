@@ -157,19 +157,21 @@ Row and page counters are maintained continuously without retaining historical s
 
 ## Deployment
 
-`connector.sh` wraps the Compose calls. `standalone` uses only the base file, `trustdeck` adds the overlay that joins the external `trustdeck` network, so `.env` can address `trustdeck-backend` and `trustdeck-keycloak` by container name. `start` checks `.env` and the instance files, prepares the state and statistics directories, builds the image, recreates the container, and waits for readiness (or, for a short one-shot import, for its successful end); `stop`, `restart`, `logs`, and `build` do what they say. `status` also prints the last pause, recovery, and completion events. `progress` shows the last completed row, the latest throughput line, and a breakdown of the dead-letter and review files (needs `jq` for the breakdown). Set `CONNECTOR_PROJECT` to run several instances side by side (default project: `trustdeck-sql-connector`); the container is named after the project.
+`connector.sh` wraps the Compose calls. `standalone` uses only the base file, `trustdeck` adds the overlay that joins the external `trustdeck` network, so `.env` can address `trustdeck-backend` and `trustdeck-keycloak` by container name. `start` checks `.env` and the instance files, prepares the state and statistics directories, builds the image, recreates the container, and waits for readiness (or, for a short one-shot import, for its successful end); `stop`, `restart`, `logs`, and `build` do what they say. `status` also prints the last pause, recovery, and completion events. `progress` shows the last completed row, the latest throughput line, and a breakdown of the dead-letter and review files (needs `jq` for the breakdown). Set `CONNECTOR_PROJECT` to run several instances side by side (default project: `trustdeck-sql-connector`); the container is named after the project. Instances started from the same checkout also need their own environment file: copy `.env.example` to, for example, `connector-b.env` (a name ending in `.env` keeps it out of Git and the image build context), and pass it as `CONNECTOR_ENV_FILE` (default `.env`; relative paths are resolved against the current directory). Each file needs its own `HEALTH_HOST_PORT` (default 18081), `STATISTICS_HOST_DIR`, `STATE_HOST_DIR`, and its own source and mapping settings. The truststores and `config/instance/application.yaml` are shared by all instances of a checkout.
 
 ```sh
   ./connector.sh trustdeck start
   ./connector.sh trustdeck progress
   CONNECTOR_PROJECT=trustdeck-sql-connector-b ./connector.sh standalone start
+  CONNECTOR_PROJECT=trustdeck-sql-connector-c CONNECTOR_ENV_FILE=connector-c.env ./connector.sh trustdeck start
 ```
 
-The equivalent plain Compose calls are:
+The equivalent plain Compose calls are (set `CONNECTOR_ENV_FILE` to the same file as `--env-file` for any file other than `.env`):
 
 ```sh
   docker compose --env-file .env -p trustdeck-sql-connector-a -f docker/compose.yaml up -d
   docker compose --env-file .env -p trustdeck-sql-connector-b -f docker/compose.yaml -f docker/compose.trustdeck-network.yaml up -d
+  CONNECTOR_ENV_FILE=$PWD/connector-c.env docker compose --env-file connector-c.env -p trustdeck-sql-connector-c -f docker/compose.yaml up -d
 ```
 
 The progress, dead-letter, and review files are written to `/app/state`, which is mounted from `STATE_HOST_DIR` (default `state/` in the repository root), so they survive container recreation. Keep the `CONNECTOR_*_FILE` settings relative (`state/...`) so the files land in this mount. Statistics are written to `/app/statistics`, mounted from `STATISTICS_HOST_DIR`. Both directories must be writable by UID 10001; `connector.sh` creates them and hands them over, otherwise Docker would create them owned by root. Instances with different tables or operations need their own state directories.

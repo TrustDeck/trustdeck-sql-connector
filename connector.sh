@@ -18,7 +18,11 @@ set -euo pipefail
 
 # Absolute path of the directory this script is in
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$ROOT_DIR/.env"
+# Environment file of this instance; set CONNECTOR_ENV_FILE to run several instances from one checkout
+ENV_FILE="${CONNECTOR_ENV_FILE:-$ROOT_DIR/.env}"
+[[ "$ENV_FILE" == /* ]] || ENV_FILE="$PWD/$ENV_FILE"
+# Compose reads the container environment from the same file (see docker/compose.yaml)
+export CONNECTOR_ENV_FILE="$ENV_FILE"
 BASE_COMPOSE="$ROOT_DIR/docker/compose.yaml"
 NETWORK_COMPOSE="$ROOT_DIR/docker/compose.trustdeck-network.yaml"
 
@@ -51,7 +55,8 @@ Actions:
              dead-letter and review files (uses jq for the summary when installed)
 
 Environment:
-  CONNECTOR_PROJECT  Compose project name (default: trustdeck-sql-connector)
+  CONNECTOR_PROJECT  Compose project name and container name (default: trustdeck-sql-connector)
+  CONNECTOR_ENV_FILE Environment file of the instance (default: .env in the repository root)
   HTTP(S)_PROXY, NO_PROXY  Passed to the image build when set
 
 Examples:
@@ -59,6 +64,7 @@ Examples:
   $0 trustdeck logs
   $0 trustdeck progress
   CONNECTOR_PROJECT=connector-b $0 standalone start
+  CONNECTOR_PROJECT=trustdeck-sql-connector-b CONNECTOR_ENV_FILE=connector-b.env $0 trustdeck start
 EOF
   exit 1
 }
@@ -98,7 +104,7 @@ env_value() {
 check_files() {
   if [[ ! -f "$ENV_FILE" ]]; then
     echo "Environment file not found: $ENV_FILE"
-    echo "Copy .env.example to .env and fill it in."
+    echo "Copy .env.example to $ENV_FILE and fill it in."
     exit 1
   fi
 
